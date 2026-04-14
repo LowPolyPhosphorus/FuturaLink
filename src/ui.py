@@ -76,13 +76,12 @@ def main():
         # Encoder rotation
         if tra != last_tra:
             if tra == 0:
-                if trb == 0:
+                if trb == 1:
                     # Clockwise
                     if selected < len(files) - 1:
                         selected += 1
                         if selected >= scroll_offset + MAX_VISIBLE:
                             scroll_offset += 1
-
                 else:
                     # Counter-clockwise
                     if selected > 0:
@@ -92,16 +91,16 @@ def main():
                 draw_menu(files, selected)
             last_tra = tra
 
-        # select button
+        # Select button
         if psh == 0 and last_psh == 1:
             if files:
                 send_file(files[selected])
-            time.sleep(0.3) 
+            time.sleep(0.3)
         last_psh = psh
 
-        # back button -- rescan USB
+        # Back button -- rescan USB
         if bak == 0 and last_bak == 1:
-            files + scan_usb()
+            files = scan_usb()
             selected = 0
             scroll_offset = 0
             draw_menu(files, selected)
@@ -114,7 +113,7 @@ def send_file(filename):
     with canvas(device) as draw:
         draw.text((0, 20), "Sending...", font=font, fill="white")
         draw.text((0, 35), filename[:18], font=font, fill="white")
-    # TODO: Hook into USB send code
+    # TODO: hook into USB send code
     time.sleep(2)
     with canvas(device) as draw:
         draw.text((0, 20), "Done!", font=font, fill="white")
