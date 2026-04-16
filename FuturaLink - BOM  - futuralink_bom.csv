@@ -1,0 +1,10 @@
+Name,Quantity,Price,Link,Notes
+Raspberry Pi Zero 2 W,1,,Amazon,Main compute module
+SSD1306 OLED display (128x64 I2C),1,,Amazon,UI display
+Micro USB OTG hub,1,,Amazon,Connects USB drive and machine simultaneously
+MicroSD card (16GB+),1,,Amazon,OS and storage
+MicroSD to Micro USB adapter,1,,Amazon Haul,For flashing SD card
+Female to female jumper wires,1,,AliExpress,OLED and encoder connections to Pi
+Micro USB cable,1,,you probably already have this one.,Power
+Altoids tin,1,,Amazon,"Enclosure (If you dont already have some, get these but eBay has branded ones if you want)"
+Optional: OTG Adapter,1,,AliExpress,For setting up with a digital interface
