@@ -11,6 +11,10 @@ MIN_Y = 0xfe1b
 MAX_Y = 0xffff
 MAX_STEP = 0x1c
 
+# Small hoop limits
+SMALL_MIN_X = 0xff1c
+SMALL_MIN_Y = 0xfeaa
+
 
 def open_machine():
     dev = usb.core.find(idVendor=VENDOR_ID, idProduct=PRODUCT_ID)
@@ -30,37 +34,6 @@ def open_machine():
     return dev
 
 
-def do_handshake(dev):
-    # Control transfer to initiate handshake
-    dev.ctrl_transfer(
-        bmRequestType=0xc0,
-        bRequest=0,
-        wValue=0x000d,
-        wIndex=0x8f01,
-        data_or_wLength=1,
-        timeout=5000
-    )
-
-    # Send handshake packet -- spells out "COMPUCON"
-    handshake = bytes([0xb9, 0x43, 0x4f, 0x4d, 0x50, 0x55, 0x43, 0x4f, 0x4e, 0x01, 0xba, 0xd8, 0x03])
-    dev.write(0x01, handshake, timeout=5000)
-
-    # Read response
-    try:
-        dev.read(0x82, 512, timeout=5000)
-    except usb.core.USBTimeoutError:
-        pass
-
-
-def add_checksum(data):
-    assert len(data) == 126
-    total = sum(data) & 0xffff
-    data.append(total % 256)
-    data.append(total // 256)
-    assert len(data) == 128
-    return data
-
-
 def poll_index(dev, index, request):
     dev.ctrl_transfer(
         bmRequestType=0xc0,
@@ -76,12 +49,48 @@ def poll_index(dev, index, request):
         return b''
 
 
+def do_handshake(dev):
+    # Step 1 -- read COMPUCON string from machine
+    poll_index(dev, 0x8e0d, 0)
+
+    # Step 2 -- control transfer then write COMPUCON string back
+    dev.ctrl_transfer(
+        bmRequestType=0xc0,
+        bRequest=0,
+        wValue=0x000d,
+        wIndex=0x8f01,
+        data_or_wLength=1,
+        timeout=5000
+    )
+    handshake = bytes([0xb9, 0x43, 0x4f, 0x4d, 0x50, 0x55, 0x43, 0x4f, 0x4e, 0x01, 0xba, 0xd8, 0x03])
+    dev.write(0x01, handshake, timeout=5000)
+    try:
+        dev.read(0x82, 512, timeout=5000)
+    except usb.core.USBTimeoutError:
+        pass
+
+    # Step 3 -- read version string
+    poll_index(dev, 0xf00a, 0)
+
+
+def add_checksum(data):
+    assert len(data) == 126
+    total = sum(data) & 0xffff
+    data.append(total % 256)
+    data.append(total // 256)
+    assert len(data) == 128
+    return data
+
+
 def build_path_data(xys):
     assert len(xys) % 2 == 0
     assert len(xys) >= 4
 
     start_x = xys[0]
     start_y = xys[1]
+
+    assert MIN_X <= start_x <= MAX_X, f"Start X out of range: {hex(start_x)}"
+    assert MIN_Y <= start_y <= MAX_Y, f"Start Y out of range: {hex(start_y)}"
 
     data = []
     data.append(0x9c)
@@ -96,28 +105,23 @@ def build_path_data(xys):
     data.append(0xc2)
 
     for i in range(2, len(xys) - 1, 2):
+        assert MIN_X <= xys[i] <= MAX_X, f"X out of range at {i}: {hex(xys[i])}"
+        assert MIN_Y <= xys[i+1] <= MAX_Y, f"Y out of range at {i+1}: {hex(xys[i+1])}"
+
         if i + 4 == len(xys) and i != 0:
             data.append(0xf7)
 
         step_x = xys[i] - xys[i - 2]
         step_y = xys[i + 1] - xys[i - 1]
 
-        assert -MAX_STEP <= step_x <= MAX_STEP, f"X step too large: {step_x}"
-        assert -MAX_STEP <= step_y <= MAX_STEP, f"Y step too large: {step_y}"
+        assert -MAX_STEP <= step_x <= MAX_STEP, f"X step too large at {i}: {step_x}"
+        assert -MAX_STEP <= step_y <= MAX_STEP, f"Y step too large at {i}: {step_y}"
 
-        if step_x < 0:
-            data.append(0x40 | (-step_x))
-        else:
-            data.append(step_x)
-
-        if step_y < 0:
-            data.append(0x40 | (-step_y))
-        else:
-            data.append(step_y)
+        data.append(0x40 | (-step_x) if step_x < 0 else step_x)
+        data.append(0x40 | (-step_y) if step_y < 0 else step_y)
 
     data.append(0xbf)
 
-    # Pad to multiple of 124
     while len(data) % 124 != 0:
         data.append(0x00)
 
@@ -136,7 +140,6 @@ def send_path(dev, xys):
         packet.append(0xba if is_last else 0xbb)
         packet = add_checksum(packet)
 
-        # Setup transfer
         dev.ctrl_transfer(
             bmRequestType=0xc0,
             bRequest=1,
@@ -157,6 +160,9 @@ def send_path(dev, xys):
 def wait_for_completion(dev):
     while True:
         result = poll_index(dev, 0x8001, 1)
+        poll_index(dev, 0x8001, 1)
+        poll_index(dev, 0x8101, 1)
+        poll_index(dev, 0x8201, 1)
         # 0x0f = idle, 0x4f/0x6f = sewing, 0x2f = done
         if result and result[0] == 0x2f:
             break
@@ -169,4 +175,3 @@ def send_file(xys):
     send_path(dev, xys)
     wait_for_completion(dev)
     usb.util.release_interface(dev, 0)
-    
