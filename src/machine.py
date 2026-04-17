@@ -11,7 +11,6 @@ MIN_Y = 0xfe1b
 MAX_Y = 0xffff
 MAX_STEP = 0x1c
 
-# Small hoop limits
 SMALL_MIN_X = 0xff1c
 SMALL_MIN_Y = 0xfeaa
 
@@ -50,10 +49,8 @@ def poll_index(dev, index, request):
 
 
 def do_handshake(dev):
-    # Step 1 -- read COMPUCON string from machine
     poll_index(dev, 0x8e0d, 0)
 
-    # Step 2 -- control transfer then write COMPUCON string back
     dev.ctrl_transfer(
         bmRequestType=0xc0,
         bRequest=0,
@@ -69,7 +66,6 @@ def do_handshake(dev):
     except usb.core.USBTimeoutError:
         pass
 
-    # Step 3 -- read version string
     poll_index(dev, 0xf00a, 0)
 
 
@@ -128,7 +124,7 @@ def build_path_data(xys):
     return data
 
 
-def send_path(dev, xys progress_callback=None):
+def send_path(dev, xys, progress_callback=None):
     poll_index(dev, 0x8601, 1)
 
     data = build_path_data(xys)
@@ -156,9 +152,10 @@ def send_path(dev, xys progress_callback=None):
             dev.read(0x82, 512, timeout=5000)
         except usb.core.USBTimeoutError:
             pass
-        
+
         if progress_callback:
             progress_callback(i + 1, total_packets)
+
 
 def wait_for_completion(dev):
     while True:
@@ -166,7 +163,6 @@ def wait_for_completion(dev):
         poll_index(dev, 0x8001, 1)
         poll_index(dev, 0x8101, 1)
         poll_index(dev, 0x8201, 1)
-        # 0x0f = idle, 0x4f/0x6f = sewing, 0x2f = done
         if result and result[0] == 0x2f:
             break
         time.sleep(1)
