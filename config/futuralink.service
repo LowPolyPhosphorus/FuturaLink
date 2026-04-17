@@ -1,0 +1,15 @@
+[Unit]
+Description=FuturaLink Unit
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/futuralink/FuturaLink/src/main.py
+WorkingDirectory=/home/futuralink/FuturaLink
+StandardOutput=journal 
+StandardError=journal
+Restart=always
+RestartSec=5
+User=futuralink
+
+[Install]
+WantedBy=multi-user.target
