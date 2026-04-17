@@ -128,12 +128,13 @@ def build_path_data(xys):
     return data
 
 
-def send_path(dev, xys):
+def send_path(dev, xys progress_callback=None):
     poll_index(dev, 0x8601, 1)
 
     data = build_path_data(xys)
+    total_packets = len(data) // 124
 
-    for base in range(0, len(data), 124):
+    for i, base in enumerate(range(0, len(data), 124)):
         is_last = (base + 124 == len(data))
 
         packet = [0xb9] + data[base:base + 124]
@@ -155,7 +156,9 @@ def send_path(dev, xys):
             dev.read(0x82, 512, timeout=5000)
         except usb.core.USBTimeoutError:
             pass
-
+        
+        if progress_callback:
+            progress_callback(i + 1, total_packets)
 
 def wait_for_completion(dev):
     while True:
