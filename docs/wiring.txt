@@ -1,0 +1,13 @@
+FuturaLink Wiring Diagram
+=========================
+
+Raspberry Pi Zero 2 W          SSD1306 OLED + Encoder Module
+─────────────────────          ──────────────────────────────
+3.3V  (Pin 1)        ----       VCC
+GND   (Pin 6)        ----       GND
+GPIO2 (Pin 3)        ----       SDA
+GPIO3 (Pin 5)        ----       SCL
+GPIO17 (Pin 11)      ----       TRA  (encoder A)
+GPIO18 (Pin 12)      ----       TRB  (encoder B)
+GPIO27 (Pin 13)      ----       PSH  (encoder push)
+GPIO22 (Pin 15)      ----       BAK  (back button)
