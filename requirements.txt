@@ -1,0 +1,5 @@
+pyusb
+pyembroidery
+luma.oled
+RPi.GPIO
+Pillow
