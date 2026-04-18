@@ -1,10 +1,15 @@
 import os
 import time
+import threading
 import RPi.GPIO as GPIO
 from luma.core.interface.serial import i2c
-from luma.oled.device import ssd1306
+from luma.oled.device import sh1106
 from luma.core.render import canvas
 from PIL import ImageFont
+import usb.util
+
+import machine
+import converter
 
 # GPIO pins
 PIN_TRA = 17
@@ -14,10 +19,9 @@ PIN_BAK = 22
 
 # OLED setup
 serial = i2c(port=1, address=0x3C)
-device = ssd1306(serial)
+device = sh1106(serial)
 device.clear()
-device.hide()
-device.show()
+
 # Font
 font = ImageFont.load_default()
 
@@ -26,12 +30,18 @@ files = []
 selected = 0
 scroll_offset = 0
 MAX_VISIBLE = 4
+sending = False
+
+USB_MOUNT = "/media/futuralink"
+
 
 def scan_usb():
-    mount = "/media/futuralink"
-    if not os.path.exists(mount):
+    if not os.path.exists(USB_MOUNT):
         return []
-    return [f for f in os.listdir(mount) if f.lower().endswith(".xxx")]
+    return sorted(f for f in os.listdir(USB_MOUNT) if f.lower().endswith(".xxx"))
+
+
+# ── Display helpers ──────────────────────────────────────────────────────────
 
 def draw_menu(file_list, selected_idx):
     with canvas(device) as draw:
@@ -52,6 +62,30 @@ def draw_menu(file_list, selected_idx):
             else:
                 draw.text((4, y), name[:18], font=font, fill="white")
 
+
+def draw_status(line1, line2=""):
+    with canvas(device) as draw:
+        draw.rectangle(device.bounding_box, outline="black", fill="black")
+        draw.text((0, 20), line1, font=font, fill="white")
+        if line2:
+            draw.text((0, 35), line2, font=font, fill="white")
+
+
+def draw_progress(current, total, filename):
+    pct = int(current / total * 100) if total else 0
+    bar_w = int(current / total * 120) if total else 0
+    with canvas(device) as draw:
+        draw.rectangle(device.bounding_box, outline="black", fill="black")
+        draw.text((0, 0), "Sending...", font=font, fill="white")
+        draw.text((0, 12), filename[:18], font=font, fill="white")
+        draw.rectangle([(4, 28), (124, 38)], outline="white", fill="black")
+        if bar_w > 0:
+            draw.rectangle([(4, 28), (4 + bar_w, 38)], fill="white")
+        draw.text((52, 42), f"{pct}%", font=font, fill="white")
+
+
+# ── GPIO ─────────────────────────────────────────────────────────────────────
+
 def gpio_setup():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(PIN_TRA, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -59,8 +93,53 @@ def gpio_setup():
     GPIO.setup(PIN_PSH, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(PIN_BAK, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
+
+# ── Send flow ────────────────────────────────────────────────────────────────
+
+def do_send(filename):
+    global sending
+    filepath = os.path.join(USB_MOUNT, filename)
+    short = filename[:18]
+
+    draw_status("Converting...", short)
+    try:
+        xys = converter.convert(filepath)
+    except Exception as e:
+        draw_status("Convert error:", str(e)[:18])
+        time.sleep(3)
+        return
+
+    draw_status("Connecting...", short)
+    try:
+        dev = machine.open_machine()
+        machine.do_handshake(dev)
+    except Exception as e:
+        draw_status("USB error:", str(e)[:18])
+        time.sleep(3)
+        return
+
+    try:
+        machine.send_path(dev, xys, progress_callback=lambda c, t: draw_progress(c, t, short))
+        draw_status("Waiting...", "machine busy")
+        machine.wait_for_completion(dev)
+    except Exception as e:
+        draw_status("Send error:", str(e)[:18])
+        time.sleep(3)
+        return
+    finally:
+        try:
+            usb.util.release_interface(dev, 0)
+        except Exception:
+            pass
+
+    draw_status("Done!", short)
+    time.sleep(2)
+
+
+# ── Main loop ────────────────────────────────────────────────────────────────
+
 def main():
-    global files, selected, scroll_offset
+    global files, selected, scroll_offset, sending
     gpio_setup()
 
     last_tra = GPIO.input(PIN_TRA)
@@ -71,22 +150,23 @@ def main():
     draw_menu(files, selected)
 
     while True:
+        if sending:
+            time.sleep(0.05)
+            continue
+
         tra = GPIO.input(PIN_TRA)
         trb = GPIO.input(PIN_TRB)
         psh = GPIO.input(PIN_PSH)
         bak = GPIO.input(PIN_BAK)
 
-        # Encoder rotation
         if tra != last_tra:
             if tra == 0:
                 if trb == 1:
-                    # Clockwise
                     if selected < len(files) - 1:
                         selected += 1
                         if selected >= scroll_offset + MAX_VISIBLE:
                             scroll_offset += 1
                 else:
-                    # Counter-clockwise
                     if selected > 0:
                         selected -= 1
                         if selected < scroll_offset:
@@ -94,14 +174,21 @@ def main():
                 draw_menu(files, selected)
             last_tra = tra
 
-        # Select button
         if psh == 0 and last_psh == 1:
-            if files:
-                send_file(files[selected])
+            if files and not sending:
+                sending = True
+                target = files[selected]
+
+                def run():
+                    global sending
+                    do_send(target)
+                    draw_menu(files, selected)
+                    sending = False
+
+                threading.Thread(target=run, daemon=True).start()
             time.sleep(0.3)
         last_psh = psh
 
-        # Back button -- rescan USB
         if bak == 0 and last_bak == 1:
             files = scan_usb()
             selected = 0
@@ -112,15 +199,6 @@ def main():
 
         time.sleep(0.001)
 
-def send_file(filename):
-    with canvas(device) as draw:
-        draw.text((0, 20), "Sending...", font=font, fill="white")
-        draw.text((0, 35), filename[:18], font=font, fill="white")
-    # TODO: hook into USB send code
-    time.sleep(2)
-    with canvas(device) as draw:
-        draw.text((0, 20), "Done!", font=font, fill="white")
-    time.sleep(1)
 
 if __name__ == "__main__":
     try:
