@@ -40,6 +40,14 @@ The Singer Futura series requires a host computer running the original Singer so
 - [luma.oled](https://github.com/rm-hull/luma.oled) for the OLED display
 - Based on protocol research by [textiles-lab](https://github.com/textiles-lab/singer-quantum-futura-ce-200)
 
+## Documentation
+
+- [USB Protocol Reference](docs/protocol.md)
+- [Configuration](docs/configuration.md)
+- [Installation](docs/installation.md)
+- [Error Reference](docs/error-reference.md)
+- [Troubleshooting](docs/troubleshooting.md)
+
 ## Installation
 1. Flash Raspberry Pi OS Lite to a MicroSD card using Raspberry Pi Imager
 2. Enable SSH and set your WiFi credentials in the imager settings before flashing
