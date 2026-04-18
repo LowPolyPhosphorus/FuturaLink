@@ -33,6 +33,7 @@ def scan_usb():
 
 def draw_menu(file_list, selected_idx):
     with canvas(device) as draw:
+        draw.rectangle(device.bounding_box, outline="black", fill="black")
         if not file_list:
             draw.text((0, 20), "No files found", font=font, fill="white")
             draw.text((0, 40), "Insert USB drive", font=font, fill="white")
