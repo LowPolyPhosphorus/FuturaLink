@@ -15,7 +15,7 @@ PIN_BAK = 22
 # OLED setup
 serial = i2c(port=1, address=0x3C)
 device = ssd1306(serial)
-
+device.clear()
 # Font
 font = ImageFont.load_default()
 
