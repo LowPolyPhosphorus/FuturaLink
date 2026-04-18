@@ -1,4 +1,15 @@
-![FuturaLink](images/logo.png)
+<p align="center">
+  <img src="images/logo.png" alt="FuturaLink">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.9+-blue">
+  <img src="https://img.shields.io/badge/platform-Raspberry%20Pi%20Zero%202%20W-red">
+  <img src="https://img.shields.io/github/last-commit/LowPolyPhosphorus/FuturaLink">
+  <img src="https://img.shields.io/github/repo-size/LowPolyPhosphorus/FuturaLink">
+  <img src="https://img.shields.io/github/license/LowPolyPhosphorus/FuturaLink">
+</p>
+
 A standalone Raspberry Pi dongle that frees Singer Futura embroidery machines from their Windows XP software. Browse and send .XXX files directly from a USB drive using an OLED screen and rotary encoder. No PC required.
 
 ## How It Works
