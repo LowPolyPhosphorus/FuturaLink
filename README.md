@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/github/last-commit/LowPolyPhosphorus/FuturaLink">
   <img src="https://img.shields.io/github/repo-size/LowPolyPhosphorus/FuturaLink">
   <img src="https://img.shields.io/github/license/LowPolyPhosphorus/FuturaLink">
-  <img src="https://img.shields.io/github/actions/workflow/status/LowPolyPhosphorus/FuturaLink/test.yml?label=tests">
+  <img src="https://img.shields.io/github/actions/workflow/status/LowPolyPhosphorus/FuturaLink/test.yml?branch=main&label=tests">
 </p>
 
 A standalone Raspberry Pi dongle that frees Singer Futura embroidery machines from their Windows XP software. Browse and send .XXX files directly from a USB drive using an OLED screen and rotary encoder. No PC required.
