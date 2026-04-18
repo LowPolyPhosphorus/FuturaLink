@@ -23,7 +23,14 @@ parser.add_argument("--dry-run", action="store_true", help="Run without sending 
 args = parser.parse_args()
 DRY_RUN = args.dry_run
 
-
+def draw_splash():
+    with canvas(device) as draw:
+        draw.rectangle(device.bounding_box, outline="black", fill="black")
+        draw.text((20, 18), "FuturaLink", font=font, fill="white")
+        draw.line([(20, 30), (108, 30)], fill="white")
+        draw.text((28, 36), "Ready", font=font, fill="white")
+    time.sleep(2)
+    
 def draw_status(line1, line2=None):
     # Display a one or two line status message centered on the OLED
     with canvas(device) as draw:
