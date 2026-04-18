@@ -60,6 +60,13 @@ The install script handles all dependencies and enables the FuturaLink service t
 4. Power on FuturaLink
 5. Use the encoder to browse your files and press to select
 6. Press back at any time to return to the file browser
+7. 
+## Running Tests
+
+```bash
+cd src
+python -m pytest ../tests/
+```
 
 ## Status
 Work in progress.
