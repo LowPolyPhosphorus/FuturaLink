@@ -1,5 +1,6 @@
-pyusb
 pyembroidery
+pyusb
 luma.oled
 RPi.GPIO
 Pillow
+pytest
